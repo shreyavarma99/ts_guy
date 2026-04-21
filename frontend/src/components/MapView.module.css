@@ -1,0 +1,202 @@
+.root {
+  position: absolute;
+  inset: 0;
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+}
+
+.sidebar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: min(420px, calc(100vw - 24px));
+  z-index: 2;
+  border-radius: 14px;
+  padding: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: color-mix(in oklab, var(--bg) 82%, transparent);
+  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+}
+
+.sidebarHeader {
+  font-family: var(--heading);
+  color: var(--text-h);
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+
+.sidebarSub {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: -6px;
+}
+
+.sectionTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin-top: 2px;
+}
+
+.cutoffRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: -6px;
+}
+
+.cutoffLabel {
+  font-size: 12px;
+  opacity: 0.9;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cutoff {
+  width: 100%;
+}
+
+.sectionTitleSmall {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin-top: 8px;
+}
+
+.list {
+  overflow: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+}
+
+.listItem {
+  appearance: none;
+  border: 1px solid color-mix(in oklab, var(--border) 65%, transparent);
+  background: color-mix(in oklab, var(--bg) 72%, transparent);
+  border-radius: 12px;
+  padding: 10px 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.listItemActive {
+  border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+.listItemTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.scorePill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+  background: color-mix(in oklab, var(--code-bg) 55%, transparent);
+  color: var(--text-h);
+  font-family: var(--mono);
+}
+
+.details {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.detailRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+}
+
+.detailLabel {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.contribList {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contribRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.notes {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  opacity: 0.95;
+}
+
+.mono {
+  font-family: var(--mono);
+  color: var(--text-h);
+  font-size: 12px;
+}
+
+.monoMuted {
+  font-family: var(--mono);
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.empty {
+  font-size: 12px;
+  opacity: 0.85;
+  padding: 6px 0;
+}
+
+.error {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  right: 12px;
+  z-index: 2;
+  max-width: 860px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, #ff4d4f 55%, transparent);
+  background: color-mix(in oklab, #1f0b0b 82%, transparent);
+  color: #ffd4d4;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+}
+
+.errorTitle {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.errorText {
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.95;
+}
+
