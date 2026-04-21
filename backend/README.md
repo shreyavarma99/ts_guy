@@ -2,6 +2,18 @@
 
 This backend builds a **live** Austin dataset (no mock/demo fallback) and serves GeoJSON for your Mapbox UI.
 
+### Scoring (trained model)
+
+After segments load, the backend fits a **ridge regression** on **`log1p(accident_count)`** using:
+
+- `log1p(traffic_volume)`, `speed_limit`, `num_lanes`, `urban_density` (z-scored on the training table)
+- `crosswalk_present`, `is_intersection` (0/1)
+- Top **12** `road_type` values (one-hot; all other types share the implicit baseline)
+
+Predicted crash count is **`expm1(linear_predictor)`**, clipped at 0. **`safety_score`** is still `exp(-0.08 * predicted_count)` on \([0,1]\).
+
+Training runs on **any non-empty** segment table (including small samples). If the normal equations stay singular, the backend retries with **stronger ridge** penalties; if those still fail, it uses an **intercept-only** model (constant mean \(\log(1+\text{crashes})\) in log space) so responses always use `explanation.model: "ridge_log1p"` with no separate heuristic scorer.
+
 ### What it pulls (live)
 
 1. **Crash points (real)** — City of Austin Open Data (Socrata): `y2wy-tgr5`  
@@ -17,7 +29,7 @@ This backend builds a **live** Austin dataset (no mock/demo fallback) and serves
 
 - **`accident_count`**: count of distinct crash IDs near the segment line (~22m) or intersection point (~42m).
 - **`traffic_volume`**: **not TxDOT yet** — a deterministic proxy derived from OSM `highway` class (until you link TxDOT AADT tables).
-- **`speed_limit` / `num_lanes` / `sidewalk_present`**: parsed from OSM tags when present, otherwise conservative defaults.
+- **`speed_limit` / `num_lanes` / `crosswalk_present`**: `1` if the road way has positive OSM `crossing=*` (and related) tags **or** if any OSM node `highway=crossing` (excluding `crossing=no`) lies within **~22 m** of the segment line / intersection point (spatial join on the same Overpass bbox).
 - **`urban_density`**: normalized from local crash intensity along the segment (a density proxy, not Census).
 
 ### Required configuration

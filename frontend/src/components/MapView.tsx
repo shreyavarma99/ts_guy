@@ -516,6 +516,12 @@ function SafetyDetails({ feature }: { feature: SafetyFeature }) {
         <div className={styles.detailLabel}>Predicted accidents</div>
         <div className={styles.mono}>{predicted.toFixed(2)}</div>
       </div>
+      {explanation?.model ? (
+        <div className={styles.detailRow}>
+          <div className={styles.detailLabel}>Model</div>
+          <div className={styles.mono}>{String(explanation.model)}</div>
+        </div>
+      ) : null}
 
       <div className={styles.sectionTitleSmall}>Why this score</div>
       {contrib ? (

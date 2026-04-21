@@ -5,6 +5,7 @@ import path from 'node:path'
 import { parse } from 'csv-parse/sync'
 
 import { buildLiveSegmentRows } from './live/build.js'
+import { fitAccidentRegressor } from './ml/accidentRegressor.js'
 import { SegmentRowSchema, type SegmentRow } from './segmentTypes.js'
 
 function backendRoot() {
@@ -55,11 +56,17 @@ export function getSegments(): SegmentRow[] {
   return cached
 }
 
+function finalizeSegmentCache() {
+  if (cached === null) return
+  fitAccidentRegressor(cached)
+}
+
 async function hydrateFromSources(): Promise<void> {
   const csvOverride = process.env.SEGMENTS_CSV_PATH
   if (csvOverride) {
     const abs = path.isAbsolute(csvOverride) ? csvOverride : path.resolve(backendRoot(), csvOverride)
     cached = readCsvSegments(abs)
+    finalizeSegmentCache()
     return
   }
 
@@ -79,6 +86,7 @@ async function hydrateFromSources(): Promise<void> {
   const fresh = maxAgeMs > 0 ? loadCacheIfFresh(maxAgeMs) : null
   if (fresh) {
     cached = fresh
+    finalizeSegmentCache()
     return
   }
 
@@ -97,6 +105,7 @@ async function hydrateFromSources(): Promise<void> {
   const out = cachePath()
   fs.mkdirSync(path.dirname(out), { recursive: true })
   fs.writeFileSync(out, JSON.stringify(rows), 'utf8')
+  finalizeSegmentCache()
 }
 
 /**

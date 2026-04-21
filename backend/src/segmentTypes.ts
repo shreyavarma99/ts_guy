@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const SegmentRowSchema = z.object({
+const SegmentRowCore = z.object({
   segment_id: z.string(),
   geometry: z.string(),
   accident_count: z.coerce.number(),
@@ -8,12 +8,23 @@ export const SegmentRowSchema = z.object({
   speed_limit: z.coerce.number(),
   num_lanes: z.coerce.number(),
   road_type: z.string(),
-  sidewalk_present: z.coerce.number(),
+  crosswalk_present: z.coerce.number(),
   is_intersection: z.coerce.number(),
   urban_density: z.coerce.number(),
 })
 
-export type SegmentRow = z.infer<typeof SegmentRowSchema>
+/** Accepts legacy `sidewalk_present` column name from older CSV/cache rows. */
+export const SegmentRowSchema = z.preprocess((val) => {
+  if (val && typeof val === 'object' && !Array.isArray(val)) {
+    const v = val as Record<string, unknown>
+    if (v.crosswalk_present == null && v.sidewalk_present != null) {
+      return { ...v, crosswalk_present: v.sidewalk_present }
+    }
+  }
+  return val
+}, SegmentRowCore)
+
+export type SegmentRow = z.infer<typeof SegmentRowCore>
 
 export function parseGeometry(geometryJson: string): any {
   let geom: unknown

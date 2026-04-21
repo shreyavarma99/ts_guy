@@ -3,7 +3,7 @@ import { lineString, point, pointToLineDistance } from '@turf/turf'
 import type { SegmentRow } from '../segmentTypes.js'
 import { parseBBox } from './bbox.js'
 import { mapboxRoadFeatureCount } from './mapboxTilequery.js'
-import { fetchOsmHighwayWays, type OsmWay } from './overpassWays.js'
+import { fetchOsmCrossingNodes, fetchOsmHighwayWays, type OsmCrossingNode, type OsmWay } from './overpassWays.js'
 import { fetchAustinCrashesInBBox, type CrashPoint } from './socrataCrashes.js'
 
 const MAJOR = new Set(['motorway', 'trunk', 'primary', 'secondary', 'tertiary'])
@@ -69,11 +69,95 @@ function parseLanes(tags: Record<string, string>, highway: string): number {
   return 1
 }
 
-function sidewalkPresent(tags: Record<string, string>): number {
-  const s = (tags.sidewalk ?? '').toLowerCase()
-  if (!s) return 0
-  if (s === 'no' || s === 'none') return 0
-  return 1
+/**
+ * OSM rarely puts `crossing=*` on drivable `highway=*` ways, but when it does we treat it as
+ * a marked / controlled crossing. Also checks a few auxiliary tags used in some regions.
+ */
+function crosswalkPresentFromTags(tags: Record<string, string>): number {
+  const crossing = (tags.crossing ?? '').toLowerCase()
+  if (crossing === 'no' || crossing === 'false') return 0
+  const positiveCrossing = new Set([
+    'zebra',
+    'traffic_signals',
+    'marked',
+    'uncontrolled',
+    'island',
+    'traffic_calming',
+    'yes',
+    'informal',
+    'unmarked',
+  ])
+  if (crossing && positiveCrossing.has(crossing)) return 1
+
+  const signals = (tags['crossing:signals'] ?? '').toLowerCase()
+  if (signals === 'yes' || signals === 'button') return 1
+
+  const zebra = (tags['crossing:zebra'] ?? '').toLowerCase()
+  if (zebra === 'yes') return 1
+
+  const marked = (tags['crossing:marked'] ?? '').toLowerCase()
+  if (marked === 'yes') return 1
+
+  const ped = (tags['pedestrian_crossing'] ?? '').toLowerCase()
+  if (ped === 'yes' || ped === 'traffic_signals') return 1
+
+  return 0
+}
+
+/** Distance from segment polyline to nearest `highway=crossing` node (OSM pattern). */
+const CROSSING_NODE_JOIN_RADIUS_M = 22
+
+function crossingBuckets(nodes: OsmCrossingNode[], cell = 0.01): Map<string, OsmCrossingNode[]> {
+  const m = new Map<string, OsmCrossingNode[]>()
+  for (const n of nodes) {
+    const key = `${Math.floor(n.lng / cell)}:${Math.floor(n.lat / cell)}`
+    const arr = m.get(key) ?? []
+    arr.push(n)
+    m.set(key, arr)
+  }
+  return m
+}
+
+function crossingNearLine(coords: [number, number][], buckets: Map<string, OsmCrossingNode[]>, radiusM: number, cell = 0.01): boolean {
+  if (coords.length < 2 || buckets.size === 0) return false
+  const ls = lineString(coords)
+  const bb = bboxOfCoords(coords, 0.003)
+  const ix0 = Math.floor(bb.minLng / cell)
+  const ix1 = Math.floor(bb.maxLng / cell)
+  const iy0 = Math.floor(bb.minLat / cell)
+  const iy1 = Math.floor(bb.maxLat / cell)
+  for (let ix = ix0 - 1; ix <= ix1 + 1; ix++) {
+    for (let iy = iy0 - 1; iy <= iy1 + 1; iy++) {
+      const arr = buckets.get(`${ix}:${iy}`)
+      if (!arr) continue
+      for (const n of arr) {
+        const d = pointToLineDistance(point([n.lng, n.lat]), ls, { units: 'meters' })
+        if (d <= radiusM) return true
+      }
+    }
+  }
+  return false
+}
+
+function crossingNearPoint(lng: number, lat: number, buckets: Map<string, OsmCrossingNode[]>, radiusM: number, cell = 0.01): boolean {
+  if (buckets.size === 0) return false
+  const ix = Math.floor(lng / cell)
+  const iy = Math.floor(lat / cell)
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dy = -2; dy <= 2; dy++) {
+      const arr = buckets.get(`${ix + dx}:${iy + dy}`)
+      if (!arr) continue
+      for (const n of arr) {
+        if (haversineMeters(lat, lng, n.lat, n.lng) <= radiusM) return true
+      }
+    }
+  }
+  return false
+}
+
+function crosswalkPresentCombined(tags: Record<string, string>, nearCrossingNode: boolean): number {
+  if (crosswalkPresentFromTags(tags)) return 1
+  return nearCrossingNode ? 1 : 0
 }
 
 function clamp(n: number, lo: number, hi: number) {
@@ -214,12 +298,14 @@ export async function buildLiveSegmentRows(env: {
   const maxIntersections = env.maxIntersections ?? 250
   const maxCrashRows = env.maxCrashRows ?? 120_000
 
-  const [crashes, waysAllRaw] = await Promise.all([
+  const [crashes, waysAllRaw, crossingNodes] = await Promise.all([
     fetchAustinCrashesInBBox(bbox, { maxRows: maxCrashRows }),
     fetchOsmHighwayWays(bbox),
+    fetchOsmCrossingNodes(bbox),
   ])
 
   const buckets = crashBuckets(crashes)
+  const crossBuckets = crossingBuckets(crossingNodes)
 
   const waysAll = [...waysAllRaw].sort((a, b) => wayRankForCap(b) - wayRankForCap(a)).slice(0, maxWaysTopo)
   const waysRender = waysAll.slice(0, maxWaysRender)
@@ -284,7 +370,10 @@ export async function buildLiveSegmentRows(env: {
       speed_limit: parseMaxspeedMph(w.tags, w.highway),
       num_lanes: parseLanes(w.tags, w.highway),
       road_type: w.highway,
-      sidewalk_present: sidewalkPresent(w.tags),
+      crosswalk_present: crosswalkPresentCombined(
+        w.tags,
+        crossingNearLine(w.coords, crossBuckets, CROSSING_NODE_JOIN_RADIUS_M),
+      ),
       is_intersection: 0,
       urban_density: urbanDensityFromCounts(accident_count, maxWayAcc),
     })
@@ -311,7 +400,10 @@ export async function buildLiveSegmentRows(env: {
       speed_limit: parseMaxspeedMph(dom.tags, dom.highway),
       num_lanes: parseLanes(dom.tags, dom.highway),
       road_type: dom.highway,
-      sidewalk_present: sidewalkPresent(dom.tags),
+      crosswalk_present: crosswalkPresentCombined(
+        dom.tags,
+        crossingNearPoint(coord[0], coord[1], crossBuckets, CROSSING_NODE_JOIN_RADIUS_M),
+      ),
       is_intersection: 1,
       urban_density: urbanDensityFromCounts(accident_count, maxIxAcc),
     })
