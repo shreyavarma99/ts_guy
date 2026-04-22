@@ -8,9 +8,7 @@ Built with Node.js, TypeScript, React, and Mapbox GL JS. Uses real public crash 
 
 ## 📄 White Paper
 
-Full technical documentation, modeling methodology, and system design:
-
-**[→ Download White Paper (PDF)](./CivicSight_WhitePaper.pdf)**
+Full technical documentation and project scope is presented in the white paper in the home directory.
 
 ---
 
