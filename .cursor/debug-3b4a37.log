@@ -1,0 +1,5 @@
+{"sessionId":"3b4a37","location":"MapView.tsx:style.load","message":"style.load fired","hypothesisId":"H1","mapSameAsRef":true,"isStyleLoaded":false,"timestamp":1776806101981}
+{"sessionId":"3b4a37","location":"MapView.tsx:loadSafetyLayers","message":"before fetch","hypothesisId":"H1","alive":true,"timestamp":1776806102006}
+{"sessionId":"3b4a37","location":"MapView.tsx:loadSafetyLayers","message":"after fetch","hypothesisId":"H1","aliveAfterFetch":true,"styleLoaded":false,"timestamp":1776806102160}
+{"sessionId":"3b4a37","location":"MapView.tsx:map-cleanup","message":"map effect cleanup (remove)","hypothesisId":"H1","hadMap":true,"timestamp":1776806118194}
+{"sessionId":"3b4a37","location":"MapView.tsx:map-cleanup","message":"map effect cleanup (remove)","hypothesisId":"H1","hadMap":true,"timestamp":1776806118275}

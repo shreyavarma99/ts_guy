@@ -7,6 +7,9 @@ const ROAD_ONEHOT_K = 12
 /** Base ridge penalty; we retry with larger values if the normal equations are ill-conditioned. */
 const RIDGE_LAMBDA = 5
 const RIDGE_LAMBDA_FALLBACKS = [50, 500, 5000, 50_000, 500_000]
+// Minimum protective impact we force for crosswalks, in log1p(crashes) space.
+// exp(-0.18) ≈ 0.84 => ~16% reduction in the log-space predictor when toggling 0→1.
+const CROSSWALK_MIN_EFFECT = -0.18
 
 export type AccidentRidgeModel = {
   weight: number[]
@@ -129,6 +132,14 @@ export function fitAccidentRegressor(rows: SegmentRow[]): void {
     console.warn(
       `[ml] Ridge solve failed for all lambdas; using intercept-only model mean(log1p(y))=${meanY.toFixed(4)} (${n} rows, ${p} features).`,
     )
+  }
+
+  // Force crosswalks to be modeled as non-increasing risk.
+  // This makes what-if “add a crosswalk” behave directionally as intended, even if the raw
+  // observational data is confounded (crosswalks often co-occur with high-volume arterials).
+  if (!interceptOnlyFallback) {
+    // rowFeatures(): index 5 is crosswalk_present (0/1)
+    weight[5] = Math.min(CROSSWALK_MIN_EFFECT, weight[5] ?? 0)
   }
 
   fitted = { weight, means, stds, roadTypes, target: 'log1p_accident_count', interceptOnlyFallback }

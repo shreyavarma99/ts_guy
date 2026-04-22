@@ -73,6 +73,7 @@ function ridgeScore(row: SegmentRow): SegmentScore {
   const notes: string[] = [
     'Predictions use a ridge regression trained on log1p(observed crash counts) for the current segment dataset (same features as the API).',
   ]
+  notes.push('Crosswalk effect is constrained to be non-increasing for “what-if” simulations (i.e., adding a crosswalk will not increase predicted crashes).')
   if (m.interceptOnlyFallback) {
     notes.push(
       'Intercept-only fallback: the full ridge system was numerically singular for this table; every row uses the same mean log1p crash level until more or less collinear data is available.',
